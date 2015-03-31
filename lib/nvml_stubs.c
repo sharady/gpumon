@@ -1,6 +1,6 @@
 #include <dlfcn.h>
 
-#include <nvml.h>
+#include <nvidia/gdk/nvml.h>
 
 #include <caml/alloc.h>
 #include <caml/callback.h>
