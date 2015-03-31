@@ -294,7 +294,7 @@ let () =
 		let gpus = get_gpus interface in
 		Process.main_loop
 			~neg_shift:0.5
-			~target:Reporter.Local
+			~target:(Reporter.Interdomain (0, 4))
 			~protocol:Rrd_interface.V2
 			~dss_f:(fun () -> generate_all_gpu_dss interface gpus)
 	with _ ->
