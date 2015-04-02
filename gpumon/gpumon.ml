@@ -3,6 +3,21 @@ open Rrdd_plugin
 
 module Process = Process(struct let name = "xcp-rrdd-gpumon" end)
 
+let control_domid = 0l
+
+let get_my_domid () =
+	let chan = Unix.open_process_in "/usr/sbin/xenstore-read domid" in
+	try
+		let domid = input_line chan |> Int32.of_string in
+		ignore (Unix.close_process_in chan);
+		domid
+	with e ->
+		close_in chan;
+		raise e
+
+let get_my_uuid () =
+	Unixext.string_of_file "/sys/hypervisor/uuid" |> String.trim
+
 let nvidia_vendor_id = 0x10del
 
 let default_config : (int32 * Gpumon_config.config) list =
@@ -147,7 +162,7 @@ let get_gpus interface =
 	make_gpu_list [] (device_count - 1)
 
 (** Generate datasources for one GPU. *)
-let generate_gpu_dss interface gpu =
+let generate_gpu_dss interface gpu owner =
 	let memory_dss =
 		match gpu.memory_metrics with
 		| [] -> []
@@ -156,7 +171,7 @@ let generate_gpu_dss interface gpu =
 			List.map
 				(function
 					| Gpumon_config.Free ->
-						Rrd.Host,
+						owner,
 						Ds.ds_make
 							~name:("gpu_memory_free_" ^ gpu.bus_id_escaped)
 							~description:"Unallocated framebuffer memory"
@@ -165,7 +180,7 @@ let generate_gpu_dss interface gpu =
 							~default:false
 							~units:"B" ()
 					| Gpumon_config.Used ->
-						Rrd.Host,
+						owner,
 						Ds.ds_make
 							~name:("gpu_memory_used_" ^ gpu.bus_id_escaped)
 							~description:"Allocated framebuffer memory"
@@ -180,7 +195,7 @@ let generate_gpu_dss interface gpu =
 			(function
 				| Gpumon_config.PowerUsage ->
 					let power_usage = Nvml.device_get_power_usage interface gpu.device in
-					Rrd.Host,
+					owner,
 					Ds.ds_make
 						~name:("gpu_power_usage_" ^ gpu.bus_id_escaped)
 						~description:"Power usage of this GPU"
@@ -190,7 +205,7 @@ let generate_gpu_dss interface gpu =
 						~units:"mW" ()
 				| Gpumon_config.Temperature ->
 					let temperature = Nvml.device_get_temperature interface gpu.device in
-					Rrd.Host,
+					owner,
 					Ds.ds_make
 						~name:("gpu_temperature_" ^ gpu.bus_id_escaped)
 						~description:"Temperature of this GPU"
@@ -209,7 +224,7 @@ let generate_gpu_dss interface gpu =
 			List.map
 				(function
 					| Gpumon_config.Compute ->
-						Rrd.Host,
+						owner,
 						Ds.ds_make
 							~name:("gpu_utilisation_compute_" ^ gpu.bus_id_escaped)
 							~description:("Proportion of time over the past sample period during"^
@@ -221,7 +236,7 @@ let generate_gpu_dss interface gpu =
 							~max:1.0
 							~units:"(fraction)" ()
 					| Gpumon_config.MemoryIO ->
-						Rrd.Host,
+						owner,
 						Ds.ds_make
 							~name:("gpu_utilisation_memory_io_" ^ gpu.bus_id_escaped)
 							~description:("Proportion of time over the past sample period during"^
@@ -239,10 +254,10 @@ let generate_gpu_dss interface gpu =
 		[] [memory_dss; other_dss; utilisation_dss]
 
 (** Generate datasources for all GPUs. *)
-let generate_all_gpu_dss interface gpus =
+let generate_all_gpu_dss interface gpus owner =
 	List.fold_left
 		(fun acc gpu ->
-			let dss = generate_gpu_dss interface gpu in
+			let dss = generate_gpu_dss interface gpu owner in
 			List.rev_append dss acc)
 		[] gpus
 
@@ -290,12 +305,21 @@ let () =
 		open_if ()
 	in
 	Process.D.info "Opened NVML interface";
+	(* If we are in the control domain, then report stats via /dev/shm and give
+	 * the datasource owner as Host.
+	 * If we aren't in the control domain, then report stats via gntshr to dom0
+	 * and give the datasource owner as VM (this domain's UUID). *)
+	let target, owner =
+		if get_my_domid () = control_domid
+		then Reporter.Local, Rrd.Host
+		else Reporter.Interdomain (0, 4), Rrd.VM (get_my_uuid ())
+	in
 	try
 		let gpus = get_gpus interface in
 		Process.main_loop
 			~neg_shift:0.5
-			~target:(Reporter.Interdomain (0, 4))
+			~target
 			~protocol:Rrd_interface.V2
-			~dss_f:(fun () -> generate_all_gpu_dss interface gpus)
+			~dss_f:(fun () -> generate_all_gpu_dss interface gpus owner)
 	with _ ->
 		close_nvml_interface interface
