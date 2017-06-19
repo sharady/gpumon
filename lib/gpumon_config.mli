@@ -7,6 +7,7 @@ type memory_metric =
 type other_metric =
 	| PowerUsage
 	| Temperature
+	| DecoderUtilisation
 
 (* Metrics which require calling nvmlDeviceGetUtilizationRates *)
 type utilisation_metric =

@@ -19,6 +19,7 @@ type memory_metric =
 type other_metric =
 	| PowerUsage
 	| Temperature
+	| DecoderUtilisation
 
 (* Metrics which require calling nvmlDeviceGetUtilizationRates *)
 type utilisation_metric =
@@ -36,6 +37,7 @@ let metric_of_string str =
 	| "memoryused" -> Ok (Memory Used)
 	| "temperature" -> Ok (Other Temperature)
 	| "powerusage" -> Ok (Other PowerUsage)
+	| "decoderutilisation" -> Ok (Other DecoderUtilisation)
 	| "compute" -> Ok (Utilisation Compute)
 	| "memoryio" -> Ok (Utilisation MemoryIO)
 	| _ -> Error (`Parse_failure str)
@@ -45,6 +47,7 @@ let string_of_metric = function
 	| Memory Used -> "memoryused"
 	| Other Temperature -> "temperature"
 	| Other PowerUsage -> "powerusage"
+	| Other DecoderUtilisation -> "decoderutilisation"
 	| Utilisation Compute -> "compute"
 	| Utilisation MemoryIO -> "memoryio"
 

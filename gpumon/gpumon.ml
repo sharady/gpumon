@@ -19,6 +19,7 @@ let default_config : (int32 * Gpumon_config.config) list =
 						Memory Used;
 						Other Temperature;
 						Other PowerUsage;
+						Other DecoderUtilisation;
 						Utilisation Compute;
 						Utilisation MemoryIO;
 					];
@@ -32,6 +33,7 @@ let default_config : (int32 * Gpumon_config.config) list =
 						Memory Used;
 						Other Temperature;
 						Other PowerUsage;
+						Other DecoderUtilisation;
 						Utilisation Compute;
 						Utilisation MemoryIO;
 					];
@@ -197,7 +199,19 @@ let generate_gpu_dss interface gpu =
 						~value:(Rrd.VT_Int64 (Int64.of_int temperature))
 						~ty:Rrd.Gauge
 						~default:false
-						~units:"°C" ())
+						~units:"°C" ()
+				| Gpumon_config.DecoderUtilisation ->
+					let decoder_utilisation = Nvml.device_get_decoder_utilization interface gpu.device in
+					Rrd.Host,
+					Ds.ds_make
+						~name:("gpu_decoder_utilisation" ^ gpu.bus_id_escaped)
+						~description:"Decoder utilisation of this GPU"
+						~value:(Rrd.VT_Float ((float_of_int decoder_utilisation) /. 100.0))
+						~ty:Rrd.Gauge
+						~default:false
+						~min:0.0
+						~max:1.0
+						~units:"(fraction)" ())
 			gpu.other_metrics
 	in
 	let utilisation_dss =
