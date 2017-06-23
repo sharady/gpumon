@@ -8,6 +8,7 @@ type other_metric =
 	| PowerUsage
 	| Temperature
 	| DecoderUtilisation
+	| EncoderUtilisation
 
 (* Metrics which require calling nvmlDeviceGetUtilizationRates *)
 type utilisation_metric =

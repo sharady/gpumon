@@ -22,6 +22,7 @@ typedef struct nvmlInterface {
     nvmlReturn_t (*deviceGetPowerUsage)(nvmlDevice_t, unsigned int*);
     nvmlReturn_t (*deviceGetUtilizationRates)(nvmlDevice_t, nvmlUtilization_t*);
     nvmlReturn_t (*deviceGetDecoderUtilization)(nvmlDevice_t, unsigned int*, unsigned int*);
+    nvmlReturn_t (*deviceGetEncoderUtilization)(nvmlDevice_t, unsigned int*, unsigned int*);
     nvmlReturn_t (*deviceSetPersistenceMode)(nvmlDevice_t, nvmlEnableState_t);
 } nvmlInterface;
 
@@ -117,6 +118,13 @@ CAMLprim value stub_nvml_open(value unit) {
     interface->deviceGetDecoderUtilization =
         dlsym(interface->handle, "nvmlDeviceGetDecoderUtilization");
     if(!interface->deviceGetDecoderUtilization) {
+        goto SymbolError;
+    }
+
+    // Load nvmlDeviceGetEncoderUtilization.
+    interface->deviceGetEncoderUtilization =
+        dlsym(interface->handle, "nvmlDeviceGetEncoderUtilization");
+    if(!interface->deviceGetEncoderUtilization) {
         goto SymbolError;
     }
 
@@ -315,6 +323,24 @@ CAMLprim value stub_nvml_device_get_decoder_utilization(
     check_error(interface, error);
 
     CAMLreturn(Val_int(decoder_utilization));
+}
+
+CAMLprim value stub_nvml_device_get_encoder_utilization(
+        value ml_interface,
+        value ml_device) {
+    CAMLparam2(ml_interface, ml_device);
+    nvmlReturn_t error;
+    nvmlInterface* interface;
+    nvmlDevice_t device;
+    unsigned int encoder_utilization;
+    unsigned int sampling_period;
+
+    interface = (nvmlInterface*)ml_interface;
+    device = *(nvmlDevice_t*)ml_device;
+    error = interface->deviceGetEncoderUtilization(device, &encoder_utilization, &sampling_period);
+    check_error(interface, error);
+
+    CAMLreturn(Val_int(encoder_utilization));
 }
 
 CAMLprim value stub_nvml_device_get_utilization_rates(

@@ -47,6 +47,8 @@ external device_get_memory_info: interface -> device -> memory_info =
 	"stub_nvml_device_get_memory_info"
 external device_get_decoder_utilization: interface -> device -> int =
         "stub_nvml_device_get_decoder_utilization"
+external device_get_encoder_utilization: interface -> device -> int =
+        "stub_nvml_device_get_encoder_utilization"
 external device_get_pci_info: interface -> device -> pci_info =
 	"stub_nvml_device_get_pci_info"
 external device_get_temperature: interface -> device -> int =
