@@ -24,6 +24,10 @@ typedef struct nvmlInterface {
     nvmlReturn_t (*deviceGetDecoderUtilization)(nvmlDevice_t, unsigned int*, unsigned int*);
     nvmlReturn_t (*deviceGetEncoderUtilization)(nvmlDevice_t, unsigned int*, unsigned int*);
     nvmlReturn_t (*deviceSetPersistenceMode)(nvmlDevice_t, nvmlEnableState_t);
+    nvmlReturn_t (*deviceGetActiveVgpus)(nvmlDevice_t, unsigned int*, nvmlVgpuInstance_t*);
+    nvmlReturn_t (*vgpuInstanceGetFbUsage)(nvmlVgpuInstance_t, unsigned long long*);
+    nvmlReturn_t (*deviceGetVgpuUtilization)
+        (nvmlDevice_t, unsigned long long, nvmlValueType_t*, unsigned int*, nvmlVgpuInstanceUtilizationSample_t*);
 } nvmlInterface;
 
 CAMLprim value stub_nvml_open(value unit) {
@@ -132,6 +136,27 @@ CAMLprim value stub_nvml_open(value unit) {
     interface->deviceSetPersistenceMode =
         dlsym(interface->handle, "nvmlDeviceSetPersistenceMode");
     if(!interface->deviceSetPersistenceMode) {
+        goto SymbolError;
+    }
+
+    // Load nvmlDeviceGetActiveVgpus
+    interface->deviceGetActiveVgpus =
+        dlsym(interface->handle, "nvmlDeviceGetActiveVgpus");
+    if(!interface->deviceGetActiveVgpus) {
+        goto SymbolError;
+    }
+
+    // Load nvmlVgpuInstanceGetFbUsage
+    interface->vgpuInstanceGetFbUsage =
+        dlsym(interface->handle, "nvmlVgpuInstanceGetFbUsage");
+    if(!interface->vgpuInstanceGetFbUsage) {
+        goto SymbolError;
+    }
+
+    // Load nvmlDeviceGetVgpuUtilization
+    interface->deviceGetVgpuUtilization =
+        dlsym(interface->handle, "nvmlDeviceGetVgpuUtilization");
+    if(!interface->deviceGetVgpuUtilization) {
         goto SymbolError;
     }
 
@@ -382,4 +407,65 @@ CAMLprim value stub_nvml_device_set_persistence_mode(
     check_error(interface, error);
 
     CAMLreturn(Val_unit);
+}
+
+CAMLprim value stub_nvml_device_get_active_vgpus(
+        value ml_interface,
+        value ml_device) {
+    CAMLparam2(ml_interface, ml_device);
+    nvmlReturn_t error;
+    nvmlInterface* interface;
+    nvmlDevice_t device;
+//    nvmlVgpuInstance_t* vgpuInstances;
+    nvmlValueType_t sampleValType;
+    nvmlVgpuInstanceUtilizationSample_t* utilizationSamples;
+//    nvmlVgpuInstanceUtilizationSample_t* sample;
+//    unsigned int vgpuCount = 0;
+//    unsigned long long fbUsage = 0;
+    unsigned long long lastSeenTimeStamp = 0;
+    unsigned int vgpuInstanceSamplesCount;
+
+    interface = (nvmlInterface*)ml_interface;
+    device = *(nvmlDevice_t*)ml_device;
+
+    interface->deviceGetVgpuUtilization(device, lastSeenTimeStamp, &sampleValType, &vgpuInstanceSamplesCount, NULL);
+    utilizationSamples = malloc(sizeof(nvmlVgpuProcessUtilizationSample_t) * vgpuInstanceSamplesCount);
+    error = interface->deviceGetVgpuUtilization(device, lastSeenTimeStamp, &sampleValType, &vgpuInstanceSamplesCount, utilizationSamples);
+    lastSeenTimeStamp = utilizationSamples[0].timeStamp;
+    error = interface->deviceGetVgpuUtilization(device, lastSeenTimeStamp, &sampleValType, &vgpuInstanceSamplesCount, utilizationSamples);
+    check_error(interface, error);
+//    CAMLreturn(Val_int(utilizationSamples[0].vgpuInstance));
+//    CAMLreturn(Val_int(utilizationSamples[0].smUtil.uiVal));
+    CAMLreturn(Val_int(utilizationSamples[0].memUtil.uiVal));
+//    CAMLreturn(Val_int(utilizationSamples[0].encUtil.uiVal));
+//    CAMLreturn(Val_int(utilizationSamples[0].decUtil.uiVal));
+//    CAMLreturn(Val_long(utilizationSamples[0].timeStamp));
+    
+   // check_error(interface, error);
+    //utilizationSamples = malloc(sizeof(nvmlVgpuProcessUtilizationSample_t) * vgpuInstanceSamplesCount);
+    //error = interface->deviceGetVgpuUtilization(device, lastSeenTimeStamp, &sampleValType, &vgpuInstanceSamplesCount, utilizationSamples);
+    //check_error(interface, error);
+
+    //CAMLreturn((value)utilizationSamples);
+//    CAMLreturn(Val_int(vgpuInstanceSamplesCount));
+//    result = caml_alloc(sizeof(utilizationSamples), Abstract_tag);
+//    intf = (nvmlVgpuInstanceUtilizationSample_t*) result;
+//    ml_vgpu_utilization = caml_alloc(6, 0);
+//    Store_field(ml_vgpu_utilization, 0, caml_copy_int64(utilizationSamples.vgpuInstance));
+//    Store_field(ml_vgpu_utilization, 1, caml_copy_int64(utilizationSamples.timeStamp));
+//    Store_field(ml_vgpu_utilization, 2, caml_copy_int64(utilizationSamples.smUtil));
+//    Store_field(ml_vgpu_utilization, 3, caml_copy_int64(utilizationSamples.encUtil));
+//    Store_field(ml_vgpu_utilization, 4, caml_copy_int64(utilizationSamples.decUtil));
+//    CAMLreturn(ml_vgpu_utilization);
+
+//    interface->deviceGetActiveVgpus(device, &vgpuCount, NULL);
+//    vgpuInstances = malloc(sizeof(nvmlVgpuInstance_t) * vgpuCount);
+
+//    error = interface->deviceGetActiveVgpus(device, &vgpuCount, vgpuInstances);
+//    check_error(interface, error);
+
+//    error = interface->vgpuInstanceGetFbUsage(*vgpuInstances, &fbUsage);
+//    check_error(interface, error);
+
+//    CAMLreturn(Val_long(fbUsage));
 }

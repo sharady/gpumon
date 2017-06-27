@@ -29,6 +29,15 @@ type utilization = {
 	memory: int;
 }
 
+type vgpu_utilization = {
+	vgpu: int32;
+	time_stamp: int64;
+	sm_util: int64;
+	mem_util: int64;
+	enc_util: int64;
+	dec_util: int64;
+}
+
 external library_open: unit -> interface = "stub_nvml_open"
 let library_open () =
 	Callback.register_exception "Library_not_loaded" (Library_not_loaded "");
@@ -61,3 +70,7 @@ external device_get_utilization_rates: interface -> device -> utilization =
 external device_set_persistence_mode: interface -> device -> enable_state ->
 	unit =
 	"stub_nvml_device_set_persistence_mode"
+(*external device_get_active_vgpus: interface -> device -> vgpu_utilization =
+        "stub_nvml_device_get_active_vgpus"*)
+external device_get_active_vgpus: interface -> device -> int =
+	"stub_nvml_device_get_active_vgpus"       
