@@ -26,6 +26,7 @@ typedef struct nvmlInterface {
     nvmlReturn_t (*deviceSetPersistenceMode)(nvmlDevice_t, nvmlEnableState_t);
     nvmlReturn_t (*deviceGetActiveVgpus)(nvmlDevice_t, unsigned int*, nvmlVgpuInstance_t*);
     nvmlReturn_t (*vgpuInstanceGetFbUsage)(nvmlVgpuInstance_t, unsigned long long*);
+    nvmlReturn_t (*vgpuInstanceGetVmID)(nvmlVgpuInstance_t, char*, unsigned int, nvmlVgpuVmIdType_t*);
     nvmlReturn_t (*deviceGetVgpuUtilization)
         (nvmlDevice_t, unsigned long long, nvmlValueType_t*, unsigned int*, nvmlVgpuInstanceUtilizationSample_t*);
 } nvmlInterface;
@@ -143,6 +144,13 @@ CAMLprim value stub_nvml_open(value unit) {
     interface->deviceGetActiveVgpus =
         dlsym(interface->handle, "nvmlDeviceGetActiveVgpus");
     if(!interface->deviceGetActiveVgpus) {
+        goto SymbolError;
+    }
+
+    // Load nvmlVgpuInstanceGetVmID
+    interface->vgpuInstanceGetVmID =
+        dlsym(interface->handle, "nvmlVgpuInstanceGetVmID");
+    if(!interface->vgpuInstanceGetVmID) {
         goto SymbolError;
     }
 
@@ -436,9 +444,9 @@ CAMLprim value stub_nvml_device_get_active_vgpus(
     check_error(interface, error);
 //    CAMLreturn(Val_int(utilizationSamples[0].vgpuInstance));
 //    CAMLreturn(Val_int(utilizationSamples[0].smUtil.uiVal));
-    CAMLreturn(Val_int(utilizationSamples[0].memUtil.uiVal));
+//    CAMLreturn(Val_int(utilizationSamples[0].memUtil.uiVal));
 //    CAMLreturn(Val_int(utilizationSamples[0].encUtil.uiVal));
-//    CAMLreturn(Val_int(utilizationSamples[0].decUtil.uiVal));
+    CAMLreturn(Val_int(utilizationSamples[0].decUtil.uiVal));
 //    CAMLreturn(Val_long(utilizationSamples[0].timeStamp));
     
    // check_error(interface, error);

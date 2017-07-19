@@ -1,4 +1,5 @@
 open Rrdd_plugin
+open Xenstore
 
 module Process = Process(struct let name = "xcp-rrdd-gpumon" end)
 
@@ -204,8 +205,9 @@ let generate_gpu_dss interface gpu =
 						~units:"°C" ()
 				| Gpumon_config.DecoderUtilisation ->
 					let decoder_utilisation = Nvml.device_get_decoder_utilization interface gpu.device in
+					(* Process.D.info "TAG1: decoder_utilisation =%d" decoder_utilisation; *)
 					let vgpu_utilization = Nvml.device_get_active_vgpus interface gpu.device in
-					Process.D.info "TAG: vgpu count=%d" vgpu_utilization;
+					Process.D.info "TAG: vgpu decoder utilisation id =%d" vgpu_utilization;
 					(*Process.D.info "TAG: vgpu=%ld, time_stamp=%Ld, sm_util=%Ld, enc_util=%Ld, dec_util=%Ld"
 						vgpu_utilization.Nvml.vgpu vgpu_utilization.Nvml.time_stamp vgpu_utilization.Nvml.sm_util
 						vgpu_utilization.Nvml.enc_util vgpu_utilization.Nvml.dec_util;*)
